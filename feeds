@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+usage() {
+  printf "Usage: $0 FILENAME\n"
+  exit 1
+}
+
+[[ -z $1 ]] && usage
+[[ ! -r $1 ]] && usage
+
+while read -r url; do
+  while read -r feed; do
+    [[ $feed =~ \<item\> ]] && item=true
+    [[ $feed =~ \</item\> ]] && item=false
+
+    [[ $item = true ]] && {
+      [[ $feed =~ \<title\>(.*)\</title\> ]] && title=${BASH_REMATCH[1]}
+      [[ $feed =~ \<pubDate\>(.*)\</pubDate\> ]] && pubdate=${BASH_REMATCH[1]}
+      [[ $feed =~ \<link\>(.*)\</link\> ]] && link=${BASH_REMATCH[1]}
+      [[ ! -z $title && ! -z $pubdate && ! -z $link ]] && {
+        items+=("$pubdate $title $link")
+        title="";pubdate="";link=""
+      }
+    }
+  done < <(curl --silent $url)
+done < "$1"
+
+for item in "${items[@]}"; do
+    printf "$item\n"
+done | sort -k4n -k3M -k2
