@@ -10,8 +10,8 @@ usage() {
 
 while read -r url; do
   while read -r feed; do
-    [[ $feed =~ \<item\> ]] && item=true
     [[ $feed =~ \</item\> ]] && item=false
+    [[ $feed =~ \<item\> ]] && item=true
 
     [[ $item = true ]] && {
       [[ $feed =~ \<title\>(.*)\</title\> ]] && title=${BASH_REMATCH[1]}
