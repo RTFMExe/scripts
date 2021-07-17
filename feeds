@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 usage() {
-  printf "Usage: $0 FILENAME\n"
+  printf "Usage: $0 [-w] -f <FILE...>\n"
   exit 1
 }
 
@@ -14,8 +14,44 @@ convert_datetime(){
   printf "${datetime[3]}-${month[${datetime[2]}]}-${datetime[1]}\n"
 }
 
-[[ -z $1 ]] && usage
-[[ ! -r $1 ]] && usage
+print_items(){
+  for item in "${items[@]}"; do
+      printf "$item\n"
+  done | sort -r
+}
+
+generate_html(){
+cat <<EOF >/tmp/feeds.html
+<html>
+<head><title>feeds</title></head>
+<body>
+<h1>./feeds</h1>
+<table>
+$(print_items)
+</table>
+</body>
+</html>
+EOF
+}
+
+while getopts ':f:w' OPTION; do
+  case "$OPTION" in
+    f)
+      file="$OPTARG"
+      [[ ! -r $file ]] && usage
+    ;;
+    w)
+      w='true'
+    ;;
+    ?)
+      usage
+    ;;
+  esac
+done
+shift "$(($OPTIND -1))"
+
+[[ $OPTIND -eq 1 ]] && usage
+[[ -z $file ]] && usage
 
 while read -r url; do
   while read -r feed; do
@@ -33,13 +69,19 @@ while read -r url; do
         link=${BASH_REMATCH[1]}
       fi
       if [[ ! -z $title && ! -z $date && ! -z $link ]]; then
-        items+=("$date $title $link")
+        if [[ -z $w ]]; then
+          items+=("$date $title $link")
+        else
+          items+=("<tr><td>$date</td> <td><a href="$link">$title</a></td></tr>")
+        fi
         title="";date="";link=""
       fi
     fi
   done < <(curl --silent $url)
-done < "$1"
+done < "$file"
 
-for item in "${items[@]}"; do
-    printf "$item\n"
-done | sort
+if [[ -z $w ]]; then
+  print_items
+else
+  generate_html
+fi
